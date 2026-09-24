@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ApexVault — Dynamic Checkout Gateway</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Outfit:wght@400;500;600;700;800&family=JetBrains+Mono:wght@600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --accent-grad: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #d946ef 100%);
+      --accent-glow: rgba(139, 92, 246, 0.35);
+    }
+    body {
+      font-family: 'Outfit', sans-serif;
+      background-color: #030712;
+      background-image: 
+        radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.15) 0px, transparent 50%),
+        radial-gradient(at 100% 100%, rgba(217, 70, 239, 0.12) 0px, transparent 50%),
+        radial-gradient(at 50% 50%, rgba(15, 23, 42, 0.8) 0px, transparent 100%);
+      min-height: 100vh;
+    }
+    .mono { font-family: 'JetBrains Mono', monospace; }
+    .heading-font { font-family: 'Space Grotesk', sans-serif; }
+
+    .premium-card {
+      background: rgba(15, 23, 42, 0.65);
+      backdrop-filter: blur(28px);
+      -webkit-backdrop-filter: blur(28px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      box-shadow: 0 30px 60px -12px rgba(0, 0, 0, 0.85), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    }
+
+    .btn-violet {
+      background: var(--accent-grad);
+      box-shadow: 0 4px 25px var(--accent-glow);
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .btn-violet:hover {
+      box-shadow: 0 8px 32px rgba(139, 92, 246, 0.55);
+      transform: translateY(-1px);
+    }
+    .btn-violet:active {
+      transform: translateY(1px);
+    }
+
+    .neon-border {
+      position: relative;
+    }
+    .neon-border::after {
+      content: '';
+      position: absolute;
+      inset: -1px;
+      border-radius: inherit;
+      padding: 1px;
+      background: linear-gradient(135deg, rgba(99, 102, 241, 0.5), rgba(217, 70, 239, 0.2), transparent);
+      -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+      -webkit-mask-composite: xor;
+      mask-composite: exclude;
+      pointer-events: none;
+    }
+
+    /* Custom Checkmark Animation */
+    @keyframes drawCheck {
+      0% { stroke-dashoffset: 50; }
+      100% { stroke-dashoffset: 0; }
+    }
+    @keyframes pulseRing {
+      0% { transform: scale(0.95); opacity: 0.8; }
+      50% { transform: scale(1.05); opacity: 0.4; }
+      100% { transform: scale(0.95); opacity: 0.8; }
+    }
+    .check-path {
+      stroke-dasharray: 50;
+      stroke-dashoffset: 50;
+      animation: drawCheck 0.5s ease-out 0.2s forwards;
+    }
+    .ring-glow {
+      animation: pulseRing 2s infinite ease-in-out;
+    }
+  </style>
+</head>
+<body class="text-slate-100 flex items-center justify-center p-4 selection:bg-fuchsia-500 selection:text-white">
+
+  <!-- ADMIN LINK GENERATOR -->
+  <div id="adminPanel" class="w-full max-w-md premium-card neon-border rounded-3xl p-8 hidden relative overflow-hidden">
+    <div class="flex items-center gap-4 mb-6">
+      <div class="h-12 w-12 rounded-2xl bg-gradient-to-tr from-indigo-500/20 to-fuchsia-500/20 border border-indigo-500/30 flex items-center justify-center text-indigo-400">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+      </div>
+      <div>
+        <h2 class="text-xl font-bold text-white heading-font tracking-tight">Create Locker Link</h2>
+        <p class="text-xs text-slate-400">Deploy dynamic UPI paywalled content</p>
+      </div>
+    </div>
+
+    <div class="space-y-4">
+      <div>
+        <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">Target Resource URL</label>
+        <input type="url" id="targetUrl" placeholder="https://t.me/... or Google Drive URL" class="w-full px-4 py-3.5 rounded-2xl bg-slate-950/70 border border-slate-800 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none transition text-slate-200">
+      </div>
+
+      <div>
+        <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">Payout VPA / UPI ID</label>
+        <select id="upiSelect" class="w-full px-4 py-3.5 rounded-2xl bg-slate-950/70 border border-slate-800 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none transition cursor-pointer text-slate-200">
+          <option value="9173456004@fam">FamPay (9173456004@fam)</option>
+          <option value="9173456004@nyes">NaviBOB (9173456004@nyes)</option>
+          <option value="limbachiya660@naviaxis">NaviPost (limbachiya660@naviaxis)</option>
+        </select>
+      </div>
+
+      <div>
+        <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">Base Price (₹)</label>
+        <input type="number" id="baseAmount" value="10" min="0.01" step="any" class="w-full px-4 py-3.5 rounded-2xl bg-slate-950/70 border border-slate-800 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none transition mono text-slate-200">
+      </div>
+
+      <button onclick="createMasterLink()" id="btnGen" class="w-full py-4 btn-violet text-white font-bold text-sm rounded-2xl tracking-wide uppercase">
+        Generate Locked URL
+      </button>
+    </div>
+
+    <div id="outputBox" class="mt-6 pt-5 border-t border-slate-800/80 hidden">
+      <label class="block text-[10px] font-bold text-indigo-400 uppercase tracking-widest mb-2">Public Shareable Link</label>
+      <div class="flex items-center gap-2">
+        <input type="text" id="shareUrl" readonly class="w-full p-3.5 bg-slate-950/90 text-xs rounded-xl border border-slate-800 text-indigo-300 mono outline-none">
+        <button onclick="copyLink()" class="px-4 py-3.5 bg-slate-800 hover:bg-slate-700 text-xs font-bold rounded-xl transition whitespace-nowrap text-white">Copy</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- USER STEP 1: INITIAL GATEWAY -->
+  <div id="userLanding" class="w-full max-w-sm premium-card neon-border rounded-3xl p-8 text-center hidden relative overflow-hidden">
+    <div class="relative w-16 h-16 mx-auto mb-5">
+      <div class="absolute inset-0 rounded-2xl bg-gradient-to-tr from-indigo-500 to-fuchsia-500 opacity-25 blur-lg"></div>
+      <div class="relative h-16 w-16 rounded-2xl bg-slate-900 border border-indigo-500/30 flex items-center justify-center text-indigo-400">
+        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z"/></svg>
+      </div>
+    </div>
+    
+    <h3 class="text-xl font-extrabold text-white heading-font mb-1 tracking-tight">Protected Content</h3>
+    <p class="text-xs text-slate-400 mb-6 leading-relaxed">Unlock dedicated instant access to your requested file.</p>
+
+    <button onclick="startProcessing()" id="btnProcess" class="w-full py-4 btn-violet text-white font-bold text-sm rounded-2xl tracking-wide">
+      Generate Payment Session
+    </button>
+
+    <!-- 3 SECOND COUNTDOWN LOADER -->
+    <div id="loaderBox" class="hidden mt-6">
+      <div class="flex flex-col items-center justify-center gap-2.5">
+        <div class="w-7 h-7 border-2 border-indigo-500/30 border-t-indigo-400 rounded-full animate-spin"></div>
+        <p class="text-xs font-medium text-slate-300">
+          Configuring secure order in <span id="timerSec" class="text-indigo-400 font-bold mono text-sm">3</span>s...
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- USER STEP 2: CHECKOUT & QR CODE -->
+  <div id="userCheckout" class="w-full max-w-sm premium-card neon-border rounded-3xl p-7 text-center hidden relative overflow-hidden">
+    <div id="waitingState">
+      <div class="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/25 text-indigo-300 text-[11px] font-medium mb-3">
+        <span class="w-2 h-2 rounded-full bg-fuchsia-400 animate-pulse"></span>
+        Waiting for UPI Transfer
+      </div>
+
+      <h3 class="text-lg font-bold text-white heading-font mb-0.5">Pay Exact Amount</h3>
+      <p class="text-[11px] text-slate-400 mb-4">Please do not modify the amount</p>
+
+      <div class="py-3 px-4 bg-slate-950/80 rounded-2xl border border-slate-800/80 mb-4 relative overflow-hidden">
+        <div class="absolute inset-0 bg-gradient-to-r from-indigo-500/5 via-fuchsia-500/5 to-transparent"></div>
+        <span class="text-[10px] text-slate-500 font-bold uppercase tracking-widest block mb-0.5">Total Payable</span>
+        <span id="displayAmt" class="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-indigo-300 via-purple-200 to-fuchsia-300 mono tracking-tight">₹0.00</span>
+      </div>
+
+      <div class="p-3.5 bg-white rounded-2xl w-fit mx-auto mb-4 shadow-2xl">
+        <div id="qrcode"></div>
+      </div>
+
+      <a id="upiPayBtn" href="#" class="block w-full py-3.5 btn-violet text-white font-bold text-sm rounded-2xl mb-4 tracking-wide shadow-lg">
+        Pay via Installed App
+      </a>
+
+      <div class="bg-indigo-950/40 border border-indigo-500/20 rounded-2xl p-3 text-left">
+        <p class="text-[11px] text-indigo-200/80 leading-relaxed">
+          <strong class="text-white font-semibold">Automatic System:</strong> After sending payment, stay on this page. Google Cloud automatically confirms bank SMS and unlocks instantly.
+        </p>
+      </div>
+    </div>
+
+    <!-- HIGH-END SUCCESS STATE -->
+    <div id="successState" class="hidden py-8">
+      <div class="w-16 h-16 mx-auto rounded-full bg-gradient-to-tr from-indigo-600 to-fuchsia-600 flex items-center justify-center p-0.5 shadow-xl shadow-fuchsia-500/20 mb-4 ring-glow">
+        <div class="w-full h-full bg-slate-950 rounded-full flex items-center justify-center">
+          <svg class="w-8 h-8 text-fuchsia-400 check-path" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path>
+          </svg>
+        </div>
+      </div>
+      <h3 class="text-xl font-bold text-white heading-font">Transaction Verified!</h3>
+      <p class="text-xs text-indigo-300 mt-1">Unlocking your download link...</p>
+    </div>
+  </div>
+
+  <script>
+    const FIREBASE = "https://download-apks-adc2c-default-rtdb.firebaseio.com";
+    const urlParams = new URLSearchParams(window.location.search);
+    const linkId = urlParams.get('id');
+    let campaignData = null;
+
+    if (!linkId) {
+      document.getElementById('adminPanel').classList.remove('hidden');
+    } else {
+      loadCampaign(linkId);
+    }
+
+    async function createMasterLink() {
+      const url = document.getElementById('targetUrl').value.trim();
+      const upi = document.getElementById('upiSelect').value;
+      const base = parseFloat(document.getElementById('baseAmount').value);
+      const btn = document.getElementById('btnGen');
+
+      if (!url || isNaN(base) || base <= 0) return alert("Please enter valid target URL and amount!");
+
+      btn.innerText = "Configuring...";
+      btn.disabled = true;
+
+      const masterId = "lnk_" + Math.random().toString(36).substring(2, 8);
+      await fetch(`${FIREBASE}/campaigns/${masterId}.json`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ targetUrl: url, upiId: upi, baseAmount: base })
+      });
+
+      document.getElementById('shareUrl').value = `${window.location.origin}${window.location.pathname}?id=${masterId}`;
+      document.getElementById('outputBox').classList.remove('hidden');
+      btn.innerText = "Generate Locked URL";
+      btn.disabled = false;
+    }
+
+    function copyLink() {
+      const el = document.getElementById('shareUrl');
+      el.select();
+      navigator.clipboard.writeText(el.value);
+      alert("Locker link copied!");
+    }
+
+    async function loadCampaign(id) {
+      const res = await fetch(`${FIREBASE}/campaigns/${id}.json`);
+      campaignData = await res.json();
+      if (!campaignData) return alert("Invalid or Expired Link!");
+
+      const sessionKey = `user_order_${id}`;
+      const existingOrder = localStorage.getItem(sessionKey);
+
+      if (existingOrder) {
+        showCheckout(existingOrder);
+      } else {
+        document.getElementById('userLanding').classList.remove('hidden');
+      }
+    }
+
+    function startProcessing() {
+      document.getElementById('btnProcess').classList.add('hidden');
+      document.getElementById('loaderBox').classList.remove('hidden');
+
+      let sec = 3;
+      const counter = setInterval(async () => {
+        sec--;
+        document.getElementById('timerSec').innerText = sec;
+        if (sec <= 0) {
+          clearInterval(counter);
+          await allocateUserOrder();
+        }
+      }, 1000);
+    }
+
+    async function allocateUserOrder() {
+      const randomPaise = Math.floor(Math.random() * 89) + 10;
+      const totalAmount = (Math.floor(campaignData.baseAmount) + (randomPaise / 100)).toFixed(2);
+      const orderKey = `amt_${Math.floor(campaignData.baseAmount)}${randomPaise}`;
+
+      await fetch(`${FIREBASE}/orders/${orderKey}.json`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          targetUrl: campaignData.targetUrl,
+          amount: totalAmount,
+          status: "PENDING",
+          createdAt: Date.now()
+        })
+      });
+
+      localStorage.setItem(`user_order_${linkId}`, orderKey);
+      document.getElementById('userLanding').classList.add('hidden');
+      showCheckout(orderKey);
+    }
+
+    async function showCheckout(orderKey) {
+      document.getElementById('userCheckout').classList.remove('hidden');
+
+      const res = await fetch(`${FIREBASE}/orders/${orderKey}.json`);
+      const ord = await res.json();
+      if (!ord) return;
+
+      if (ord.status === "PAID") return unlock(ord.targetUrl);
+
+      document.getElementById('displayAmt').innerText = '₹' + ord.amount;
+
+      const upiUri = `upi://pay?pa=${encodeURIComponent(campaignData.upiId)}&pn=ApexStore&am=${ord.amount}&cu=INR&tn=Order`;
+      document.getElementById('upiPayBtn').href = upiUri;
+
+      new QRCode(document.getElementById("qrcode"), {
+        text: upiUri,
+        width: 160,
+        height: 160,
+        correctLevel: QRCode.CorrectLevel.M
+      });
+
+      const timer = setInterval(async () => {
+        try {
+          const r = await fetch(`${FIREBASE}/orders/${orderKey}/status.json`);
+          const st = await r.json();
+          if (st === "PAID") {
+            clearInterval(timer);
+            unlock(ord.targetUrl);
+          }
+        } catch(e) {}
+      }, 1500);
+    }
+
+    function unlock(target) {
+      document.getElementById('waitingState').classList.add('hidden');
+      document.getElementById('successState').classList.remove('hidden');
+      setTimeout(() => { window.location.href = target; }, 1400);
+    }
+  </script>
+</body>
+  </html>
+  
