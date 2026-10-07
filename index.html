@@ -1,0 +1,920 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#070709">
+<title>PayQuick — Secure Checkout</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fragment+Mono&family=Geist:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+<style>
+@property --a { syntax:'<angle>'; initial-value:0deg; inherits:false }
+:root{
+  --bg:#060607;
+  --bg-2:#0c0c0e;
+  --surface:#121214;
+  --surface-2:#19191d;
+  --surface-3:#222227;
+  --line:rgba(255,255,255,.08);
+  --line-strong:rgba(255,255,255,.14);
+  --text:#f5f2eb;
+  --muted:#9a9aa3;
+  --faint:#686872;
+  --accent:#e8ff6a;
+  --accent-2:#d4ff32;
+  --accent-ink:#0f1400;
+  --success:#9eff8a;
+  --success-2:#4de17a;
+  --danger:#ff7a8a;
+  --serif:'Instrument Serif', Georgia, serif;
+  --sans:'Geist', system-ui, -apple-system, sans-serif;
+  --mono:'Fragment Mono', ui-monospace, monospace;
+  --ease-out: cubic-bezier(.22,1,.36,1);
+  --ease-spring: cubic-bezier(.16,1,.3,1);
+  --shadow-soft: 0 30px 80px -20px rgba(0,0,0,.9), 0 0 0 1px rgba(255,255,255,.04) inset;
+  --shadow-accent: 0 18px 50px -12px rgba(232,255,106,.5);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scrollbar-gutter:stable}
+body{
+  font-family:var(--sans);
+  background:var(--bg);
+  color:var(--text);
+  min-height:100vh; min-height:100dvh;
+  display:flex; justify-content:center; align-items:center;
+  padding:32px 18px;
+  overflow-x:hidden;
+  -webkit-font-smoothing:antialiased;
+  -moz-osx-font-smoothing:grayscale;
+}
+button,input{font-family:inherit}
+.hidden{display:none !important}
+
+/* ---------- Background ---------- */
+.bg{
+  position:fixed; inset:0; z-index:-2;
+  background: radial-gradient(120% 80% at 15% 10%, rgba(232,255,106,.14), transparent 50%),
+              radial-gradient(100% 70% at 85% 90%, rgba(136,142,255,.18), transparent 55%),
+              radial-gradient(80% 60% at 50% 50%, rgba(255,255,255,.04), transparent 70%),
+              var(--bg);
+}
+.bg::before{
+  content:''; position:absolute; inset:0;
+  background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.05'/%3E%3C/svg%3E");
+  opacity:.7; mix-blend-mode:soft-light; pointer-events:none;
+}
+.orb{position:fixed; border-radius:50%; filter:blur(70px); pointer-events:none; z-index:-1; opacity:.9}
+.orb-1{width:52vmax; height:52vmax; background:radial-gradient(circle at 30% 30%, #1a1c2a, #12131a 60%); top:-18vmax; left:-14vmax; animation:orbFloat 24s var(--ease-out) infinite alternate}
+.orb-2{width:48vmax; height:48vmax; background:radial-gradient(circle at 70% 30%, rgba(232,255,106,.22), transparent 70%); bottom:-20vmax; right:-16vmax; animation:orbFloat 28s var(--ease-out) infinite alternate-reverse}
+@keyframes orbFloat{to{transform:translate(5vmax,4vmax) scale(1.08)}}
+
+/* ---------- Shell ---------- */
+.app-shell{
+  width:100%; max-width:440px;
+  position:relative;
+  background: linear-gradient(180deg, rgba(25,25,29,.9), rgba(12,12,14,.92));
+  border:1px solid var(--line);
+  border-radius:32px;
+  backdrop-filter:blur(32px) saturate(140%);
+  -webkit-backdrop-filter:blur(32px) saturate(140%);
+  box-shadow: var(--shadow-soft);
+  overflow:hidden;
+  transform:translateZ(0);
+}
+.app-shell::before{
+  content:''; position:absolute; inset:0; border-radius:inherit; padding:1px;
+  background:linear-gradient(165deg, rgba(255,255,255,.18), rgba(255,255,255,.03) 35%, rgba(232,255,106,.2));
+  -webkit-mask:linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite:xor; mask-composite:exclude; pointer-events:none;
+}
+.app-shell::after{
+  content:''; position:absolute; top:0; left:12%; right:12%; height:1px;
+  background:linear-gradient(90deg, transparent, rgba(255,255,255,.35), transparent);
+  pointer-events:none;
+}
+.inner{padding:36px 28px 28px; position:relative}
+
+/* ---------- Typography ---------- */
+.kicker{
+  display:inline-flex; align-items:center; gap:8px;
+  padding:6px 12px; border-radius:999px;
+  font-size:10.5px; font-weight:700; letter-spacing:.14em; text-transform:uppercase;
+  color:var(--muted);
+  background:rgba(255,255,255,.05);
+  border:1px solid var(--line);
+}
+.kicker i{width:6px; height:6px; border-radius:50%; background:var(--success); box-shadow:0 0 12px var(--success); animation:pulseDot 2s ease-in-out infinite}
+@keyframes pulseDot{0%,100%{opacity:1; transform:scale(1)} 50%{opacity:.7; transform:scale(1.2)}}
+.display{
+  font-family:var(--serif);
+  font-size:38px; line-height:.95; letter-spacing:-.03em; font-weight:400;
+  margin:18px 0 10px;
+  background:linear-gradient(180deg, #fff 20%, #d6d0c2);
+  -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent;
+}
+.display em{font-style:italic; font-weight:400; background:linear-gradient(180deg, #e8ff6a, #b6d100); -webkit-background-clip:text; background-clip:text}
+.sub{
+  font-size:14.5px; line-height:1.6; color:var(--muted); font-weight:450; letter-spacing:-.01em;
+  margin-bottom:26px;
+}
+
+/* ---------- Form ---------- */
+.stack{display:flex; flex-direction:column; gap:18px; text-align:left}
+.field-group{display:flex; flex-direction:column; gap:9px}
+.field-label{
+  display:flex; justify-content:space-between; align-items:center;
+  font-size:11.5px; font-weight:600; letter-spacing:.06em; text-transform:uppercase; color:#c2c2c9;
+}
+.field-label span{color:var(--faint); font-family:var(--mono); font-size:11px; letter-spacing:0; text-transform:none}
+.input-wrap{position:relative; group:field}
+.input-wrap .prefix{
+  position:absolute; left:16px; top:50%; transform:translateY(-50%);
+  font-family:var(--serif); font-size:20px; color:var(--accent); pointer-events:none;
+}
+.input{
+  width:100%; padding:15.5px 16px;
+  font-size:15.5px; font-weight:500; letter-spacing:-.01em;
+  color:var(--text);
+  background:var(--surface-2);
+  border:1px solid var(--line);
+  border-radius:16px;
+  outline:none;
+  transition:border-color .25s var(--ease-out), background .25s, box-shadow .25s, transform .2s;
+}
+.input:hover{border-color:var(--line-strong); background:var(--surface-3)}
+.input:focus{
+  border-color:rgba(232,255,106,.7);
+  background:#1b1b1f;
+  box-shadow:0 0 0 4px rgba(232,255,106,.12), 0 10px 30px -12px rgba(232,255,106,.4);
+  transform:translateY(-1px);
+}
+.input::placeholder{color:#5a5a64}
+.input.mono{font-family:var(--mono); letter-spacing:.14em; font-weight:400}
+.input.mono::placeholder{font-family:var(--sans); letter-spacing:0}
+.input.file{
+  padding:10px; font-size:13px; color:var(--muted); cursor:pointer;
+}
+.input.file::file-selector-button{
+  margin-right:12px; padding:9px 14px; border:0; border-radius:10px;
+  font:700 12px var(--sans); letter-spacing:.02em;
+  color:var(--accent-ink); background:var(--accent); cursor:pointer;
+}
+
+/* ---------- Buttons ---------- */
+.btn{
+  position:relative; isolation:isolate;
+  width:100%; padding:17px 18px;
+  border:0; border-radius:16px;
+  font-size:15px; font-weight:650; letter-spacing:-.01em;
+  cursor:pointer;
+  transition:transform .25s var(--ease-spring), box-shadow .25s, background .25s, color .25s, opacity .2s;
+  overflow:hidden;
+}
+.btn:active{transform:scale(.97)}
+.btn-primary{
+  color:var(--accent-ink); background:var(--accent);
+  box-shadow:var(--shadow-accent), inset 0 1px 0 rgba(255,255,255,.7);
+}
+.btn-primary::after{
+  content:''; position:absolute; inset:0; border-radius:inherit;
+  background:linear-gradient(100deg, transparent 30%, rgba(255,255,255,.7) 50%, transparent 70%);
+  transform:translateX(-120%) skewX(-18deg);
+  transition:transform .7s var(--ease-out);
+}
+.btn-primary:hover{transform:translateY(-2px); background:var(--accent-2); box-shadow:0 22px 50px -14px rgba(232,255,106,.65)}
+.btn-primary:hover::after{transform:translateX(120%) skewX(-18deg)}
+.btn-primary:disabled{background:#232326; color:#6a6a73; box-shadow:none; cursor:not-allowed; transform:none}
+.btn-primary:disabled::after{display:none}
+.btn-ghost{
+  color:var(--muted); background:rgba(255,255,255,.04); border:1px solid var(--line);
+}
+.btn-ghost:hover{color:var(--text); background:rgba(255,255,255,.07); border-color:var(--line-strong)}
+
+/* ---------- Amount + QR ---------- */
+.amount-card{
+  display:flex; flex-direction:column; align-items:center;
+  padding:22px 18px 18px; margin-bottom:22px;
+  border-radius:24px;
+  background:linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.02));
+  border:1px solid var(--line);
+}
+.amount-label{font-size:11px; font-weight:700; letter-spacing:.14em; text-transform:uppercase; color:var(--faint); margin-bottom:6px}
+.amount-value{
+  font-family:var(--serif); font-size:56px; line-height:.9; letter-spacing:-.04em; font-weight:400;
+  display:flex; align-items:baseline; gap:8px;
+}
+.amount-value .cur{font-size:26px; opacity:.7; transform:translateY(-2px)}
+.amount-value .num{background:linear-gradient(180deg,#fff 10%, #e9e1c8); -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent}
+
+.qr-stage{
+  position:relative; margin:0 auto 22px; width:fit-content;
+}
+.qr-ring{
+  --a:0deg;
+  padding:3px; border-radius:30px;
+  background:conic-gradient(from var(--a), #e8ff6a, #8b8eff, #ffffff, #e8ff6a);
+  animation:spinA 5s linear infinite;
+  box-shadow:0 20px 60px -18px rgba(232,255,106,.45);
+}
+.qr-card{
+  position:relative; overflow:hidden;
+  padding:16px; border-radius:27px; background:#fff;
+  box-shadow:inset 0 1px 0 rgba(0,0,0,.06);
+}
+.qr-card img{display:block; width:214px; height:214px; object-fit:contain; border-radius:12px}
+.qr-scan{
+  position:absolute; left:0; right:0; top:0; height:48px;
+  background:linear-gradient(180deg, transparent, rgba(232,255,106,.55));
+  border-bottom:2px solid #d4ff32;
+  filter:blur(.2px);
+  animation:qrScan 2.8s cubic-bezier(.4,0,.2,1) infinite;
+  pointer-events:none;
+}
+@keyframes qrScan{0%{transform:translateY(-60%)} 50%{transform:translateY(420%)} 100%{transform:translateY(-60%)}}
+.qr-corners::before,.qr-corners::after{content:''; position:absolute; width:18px; height:18px; border:2px solid rgba(0,0,0,.18); pointer-events:none}
+.qr-corners::before{top:16px; left:16px; border-right:0; border-bottom:0; border-top-left-radius:10px}
+.qr-corners::after{top:16px; right:16px; border-left:0; border-bottom:0; border-top-right-radius:10px}
+.qr-corners-b::before,.qr-corners-b::after{content:''; position:absolute; width:18px; height:18px; border:2px solid rgba(0,0,0,.18); pointer-events:none}
+.qr-corners-b::before{bottom:16px; left:16px; border-right:0; border-top:0; border-bottom-left-radius:10px}
+.qr-corners-b::after{bottom:16px; right:16px; border-left:0; border-top:0; border-bottom-right-radius:10px}
+
+.apps{
+  display:flex; justify-content:center; gap:8px; margin-bottom:28px;
+}
+.apps span{
+  padding:6px 11px; border-radius:999px;
+  font-size:11.5px; font-weight:600; letter-spacing:.02em;
+  color:#b8b8c1; background:rgba(255,255,255,.04); border:1px solid var(--line);
+  display:inline-flex; align-items:center; gap:6px;
+}
+.apps b{width:14px; height:14px; display:grid; place-items:center; background:var(--accent); color:#000; border-radius:50%; font-size:10px}
+
+/* ---------- Loading / Waiting ---------- */
+.load-shell{display:flex; flex-direction:column; align-items:center; padding:24px 0 10px}
+.loader{
+  width:86px; height:86px; position:relative; margin-bottom:22px;
+}
+.loader-ring{
+  position:absolute; inset:0; border-radius:50%;
+  border:2px solid rgba(255,255,255,.07);
+  border-top-color:var(--accent); border-right-color:#8b8eff;
+  animation:spin 1s linear infinite;
+}
+.loader-core{
+  position:absolute; inset:22px; border-radius:50%;
+  background:radial-gradient(circle at 50% 30%, rgba(232,255,106,.35), rgba(232,255,106,.06));
+  box-shadow:0 0 30px rgba(232,255,106,.25) inset;
+  animation:corePulse 1.8s ease-in-out infinite;
+}
+@keyframes corePulse{0%,100%{transform:scale(1)} 50%{transform:scale(.92)}}
+
+/* Radar / Verification */
+.radar-wrap{
+  position:relative; width:148px; height:148px; margin:6px auto 26px; display:grid; place-items:center;
+}
+.radar-glow{
+  position:absolute; inset:-10px; border-radius:50%;
+  background:radial-gradient(circle, rgba(232,255,106,.18), transparent 65%);
+  filter:blur(8px);
+}
+.radar-ring{
+  position:absolute; border-radius:50%;
+  border:1px solid rgba(232,255,106,.18);
+}
+.radar-ring:nth-child(1){inset:0; animation:radarPulse 3s ease-out infinite}
+.radar-ring:nth-child(2){inset:18px; animation:radarPulse 3s ease-out infinite .6s}
+.radar-ring:nth-child(3){inset:36px; animation:radarPulse 3s ease-out infinite 1.2s}
+@keyframes radarPulse{0%{transform:scale(.9); opacity:1} 100%{transform:scale(1.25); opacity:0}}
+.radar-core{
+  position:relative; width:68px; height:68px; border-radius:50%;
+  background:linear-gradient(180deg, #1e1e22, #131316);
+  border:1px solid var(--line-strong);
+  display:grid; place-items:center;
+  box-shadow:0 12px 30px -10px rgba(0,0,0,.8), inset 0 1px 0 rgba(255,255,255,.1);
+}
+.radar-core svg{width:28px; height:28px; stroke:var(--accent); fill:none; stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round; filter:drop-shadow(0 0 8px rgba(232,255,106,.5))}
+.radar-sweep{
+  position:absolute; inset:0; border-radius:50%;
+  background:conic-gradient(from 0deg, transparent 0 65%, rgba(232,255,106,.55) 85%, transparent 100%);
+  -webkit-mask:radial-gradient(circle, transparent 40%, #000 42%);
+  mask:radial-gradient(circle, transparent 40%, #000 42%);
+  animation:spin 2.2s linear infinite;
+}
+
+.steps{list-style:none; margin-top:22px; text-align:left; width:100%}
+.steps li{
+  position:relative; display:flex; gap:14px; align-items:center;
+  padding:11px 0; font-size:14px; font-weight:500; color:#6a6a75;
+  transition:color .4s var(--ease-out), transform .4s;
+}
+.steps li:not(:last-child)::after{
+  content:''; position:absolute; left:11px; top:38px; width:2px; height:calc(100% - 20px);
+  background:linear-gradient(180deg, rgba(255,255,255,.12), rgba(255,255,255,.04));
+}
+.steps li .dot{
+  flex:none; width:24px; height:24px; border-radius:50%;
+  display:grid; place-items:center;
+  border:2px solid rgba(255,255,255,.12); background:rgba(255,255,255,.02);
+  transition:all .4s var(--ease-out);
+}
+.steps li.done{color:#d8d8df}
+.steps li.done .dot{background:var(--accent); border-color:var(--accent); color:#000}
+.steps li.done .dot::after{content:'✓'; font-size:12px; font-weight:800}
+.steps li.active{color:var(--text); transform:translateX(2px)}
+.steps li.active .dot{border-color:rgba(232,255,106,.35); border-top-color:var(--accent); animation:spin .8s linear infinite}
+
+.progress{height:4px; margin-top:18px; border-radius:999px; background:rgba(255,255,255,.06); overflow:hidden; position:relative}
+.progress span{
+  display:block; height:100%; width:42%; border-radius:inherit;
+  background:linear-gradient(90deg, var(--accent), #a8ff88);
+  animation:progressSlide 1.4s ease-in-out infinite;
+  box-shadow:0 0 12px rgba(232,255,106,.6);
+}
+@keyframes progressSlide{0%{transform:translateX(-100%)} 100%{transform:translateX(280%)}}
+.meta-row{display:flex; justify-content:space-between; margin-top:12px; font-size:11.5px; color:var(--faint); font-family:var(--mono)}
+.meta-row b{color:#c9c9d1; font-weight:600}
+
+.receipt{
+  margin-top:20px; padding:4px 18px; border-radius:18px;
+  background:rgba(255,255,255,.03); border:1px solid var(--line);
+  font-size:13px;
+}
+.receipt p{display:flex; justify-content:space-between; gap:16px; padding:12px 0}
+.receipt p+p{border-top:1px dashed rgba(255,255,255,.08)}
+.receipt b{color:var(--muted); font-weight:600; font-size:11px; letter-spacing:.06em; text-transform:uppercase}
+.receipt span{color:#fff; font-weight:500; text-align:right; word-break:break-all; font-family:var(--mono); font-size:12.5px}
+
+/* ---------- Success ---------- */
+.success-wrap{display:flex; flex-direction:column; align-items:center; padding:10px 0 6px}
+.check-shell{
+  position:relative; width:108px; height:108px; margin:8px auto 24px;
+}
+.check-glow{
+  position:absolute; inset:-12px; border-radius:50%;
+  background:radial-gradient(circle, rgba(158,255,138,.28), transparent 70%);
+  filter:blur(10px); animation:checkGlow 2.2s ease-in-out infinite;
+}
+@keyframes checkGlow{0%,100%{transform:scale(1); opacity:.8} 50%{transform:scale(1.1); opacity:1}}
+.check-circle{
+  position:absolute; inset:0; border-radius:50%;
+  background:linear-gradient(180deg, #1e2a14, #121914);
+  border:1px solid rgba(158,255,138,.35);
+  box-shadow:0 0 0 1px rgba(158,255,138,.15) inset, 0 18px 40px -12px rgba(158,255,138,.45);
+}
+.checkmark{
+  position:relative; width:108px; height:108px; display:block;
+}
+.checkmark__circle{
+  stroke-dasharray:166; stroke-dashoffset:166; stroke:var(--success);
+  stroke-width:2.2; fill:none;
+  animation:drawCircle .7s cubic-bezier(.65,0,.45,1) forwards;
+}
+.checkmark__check{
+  stroke-dasharray:48; stroke-dashoffset:48; stroke:#fff;
+  stroke-width:2.6; stroke-linecap:round; stroke-linejoin:round; fill:none;
+  animation:drawCheck .35s cubic-bezier(.65,0,.45,1) .75s forwards;
+}
+@keyframes drawCircle{to{stroke-dashoffset:0}}
+@keyframes drawCheck{to{stroke-dashoffset:0}}
+.check-pop{animation:pop .5s var(--ease-spring) 1s both}
+@keyframes pop{0%{transform:scale(.9)} 50%{transform:scale(1.08)} 100%{transform:scale(1)}}
+
+/* Confetti */
+.confetti{position:fixed; pointer-events:none; z-index:50; top:42%; left:50%; width:8px; height:12px; border-radius:2px; animation:confettiFly 1.8s var(--ease-out) forwards}
+@keyframes confettiFly{0%{transform:translate(-50%,-50%) scale(1) rotate(0deg); opacity:1} 100%{transform:translate(var(--x), var(--y)) rotate(var(--r)); opacity:0}}
+
+/* ---------- Admin ---------- */
+.preview-card{
+  display:none; margin:6px 0 18px; padding:14px; border-radius:20px;
+  background:rgba(255,255,255,.03); border:1px solid var(--line); text-align:center;
+}
+.preview-card img{width:148px; height:148px; object-fit:contain; padding:10px; background:#fff; border-radius:16px; box-shadow:0 8px 28px -10px rgba(0,0,0,.6)}
+.link-mono{
+  padding:12px 14px; margin-bottom:12px; border-radius:12px;
+  background:rgba(0,0,0,.45); border:1px solid var(--line);
+  color:#e8e6a0; font:500 11.5px/1.5 var(--mono); word-break:break-all;
+}
+.prev-head{display:flex; justify-content:space-between; align-items:center; margin-top:32px; padding-top:22px; border-top:1px solid var(--line)}
+.prev-head h3{font-family:var(--serif); font-size:20px; font-weight:400; letter-spacing:-.02em}
+.links{margin-top:14px; display:flex; flex-direction:column; gap:10px; max-height:320px; overflow:auto; padding-right:2px; scrollbar-width:thin}
+.link-row{
+  display:flex; align-items:center; gap:12px; padding:12px;
+  border-radius:18px; background:rgba(255,255,255,.03); border:1px solid var(--line);
+  transition:transform .3s var(--ease-spring), border-color .3s, background .3s;
+  animation:enter .5s var(--ease-out) both;
+}
+.link-row:hover{transform:translateY(-2px); border-color:rgba(232,255,106,.28); background:rgba(232,255,106,.05)}
+.link-row img{width:48px; height:48px; padding:4px; background:#fff; border-radius:12px; object-fit:contain; flex:none}
+.link-meta{flex:1; min-width:0}
+.link-meta .amt{font-family:var(--serif); font-size:18px; color:#fff}
+.link-meta .url{font-size:11.5px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:2px; font-family:var(--mono)}
+.mini-btn{padding:8px 12px; border:0; border-radius:10px; font-size:11.5px; font-weight:700; cursor:pointer; transition:.2s}
+.mini-copy{color:var(--accent); background:rgba(232,255,106,.12)} .mini-copy:hover{background:var(--accent); color:#000}
+.mini-del{color:#ff9aa8; background:rgba(255,122,138,.12)} .mini-del:hover{background:var(--danger); color:#fff}
+
+/* ---------- Animations ---------- */
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes spinA{to{--a:360deg}}
+@keyframes enter{from{opacity:0; transform:translateY(12px) scale(.98)} to{opacity:1; transform:none}}
+@keyframes fadeBlurIn{from{opacity:0; transform:translateY(16px) scale(.98); filter:blur(12px)} to{opacity:1; transform:none; filter:blur(0)}}
+@keyframes fadeBlurOut{from{opacity:1; transform:none; filter:blur(0)} to{opacity:0; transform:translateY(-10px) scale(.98); filter:blur(10px)}}
+.animate-in{animation:fadeBlurIn .62s var(--ease-out) both}
+.animate-out{animation:fadeBlurOut .38s var(--ease-out) both}
+.stagger > *{animation:enter .6s var(--ease-out) both}
+.stagger > *:nth-child(2){animation-delay:.05s} .stagger > *:nth-child(3){animation-delay:.1s}
+.stagger > *:nth-child(4){animation-delay:.15s} .stagger > *:nth-child(5){animation-delay:.2s} .stagger > *:nth-child(6){animation-delay:.25s}
+
+.foot{margin-top:20px; font-size:11.5px; color:var(--faint); line-height:1.6; text-align:center; font-family:var(--mono)}
+.shimmer{
+  background:linear-gradient(90deg, var(--muted) 0%, #fff 50%, var(--muted) 100%);
+  background-size:200% 100%; -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent;
+  animation:shimmerMove 2.2s linear infinite;
+}
+@keyframes shimmerMove{to{background-position:-200% 0}}
+
+@media(max-width:420px){
+  .inner{padding:28px 20px 22px}
+  .display{font-size:34px}
+  .amount-value{font-size:48px}
+}
+@media(prefers-reduced-motion:reduce){
+  *,::before,::after{animation-duration:.01ms !important; transition-duration:.01ms !important}
+}
+</style>
+</head>
+<body>
+<div class="bg"></div>
+<div class="orb orb-1"></div>
+<div class="orb orb-2"></div>
+
+<div class="app-shell" id="mainContainer">
+  <div class="inner">
+    <!-- ADMIN -->
+    <div id="adminView" class="hidden">
+      <div class="kicker"><i></i> PayQuick Studio — Admin</div>
+      <h1 class="display">Create a <em>payment link</em></h1>
+      <p class="sub">Set amount, destination URL and your UPI QR. Links are stored securely and auto-expire safe.</p>
+      
+      <div class="stack">
+        <div class="field-group">
+          <div class="field-label">Amount <span>INR</span></div>
+          <div class="input-wrap"><span class="prefix">₹</span><input type="number" id="adminAmount" class="input" style="padding-left:38px" placeholder="499" required></div>
+        </div>
+        <div class="field-group">
+          <div class="field-label">Destination URL <span>opens after success</span></div>
+          <input type="url" id="adminTargetUrl" class="input" placeholder="https://t.me/yourchannel or Drive link" required>
+        </div>
+        <div class="field-group">
+          <div class="field-label">UPI QR image <span>max 800 KB</span></div>
+          <input type="file" id="adminQrFile" class="input file" accept="image/*" required>
+        </div>
+        <div class="preview-card" id="adminPreviewBox"><img id="adminQrPreview" src="" alt="QR Preview"></div>
+        <button id="genBtn" class="btn btn-primary" onclick="handleClick(); generatePaymentLink()">Generate payment link</button>
+        
+        <div id="adminResultBox" class="hidden" style="margin-top:4px">
+          <div class="field-label" style="margin-bottom:10px">Share this link</div>
+          <div class="link-mono" id="finalGeneratedLink"></div>
+          <button class="btn btn-primary" style="background:#fff; color:#000; box-shadow:none" onclick="handleClick(); copyPaymentLink()">Copy link</button>
+        </div>
+      </div>
+
+      <div class="prev-head">
+        <h3>Active links</h3>
+        <button class="btn-ghost" style="padding:7px 12px; border-radius:999px; font-size:11.5px; font-weight:600" onclick="handleClick(); loadPreviousLinks()">↻ Refresh</button>
+      </div>
+      <div class="links" id="previousLinksList"></div>
+      <p class="foot">All links are encrypted at rest • Firebase RTDB</p>
+    </div>
+
+    <!-- USER -->
+    <div id="userView" class="hidden">
+      <div id="loadingScreen" class="load-shell">
+        <div class="loader"><div class="loader-ring"></div><div class="loader-core"></div></div>
+        <p class="sub shimmer" style="margin:0; font-size:13px; font-family:var(--mono)">Establishing secure tunnel…</p>
+      </div>
+
+      <div id="userPaymentFormSection" class="hidden">
+        <div class="kicker"><i></i> Secure checkout • Encrypted</div>
+        <h2 class="display">Scan &amp; <em>pay</em></h2>
+        <p class="sub">Pay with any UPI app, then verify with your 12-digit UTR. Keep the page open.</p>
+
+        <div class="amount-card">
+          <div class="amount-label">Amount payable</div>
+          <div class="amount-value"><span class="cur">₹</span><span class="num" id="userDisplayAmount">0.00</span></div>
+        </div>
+
+        <div class="qr-stage">
+          <div class="qr-ring"><div class="qr-card">
+            <span class="qr-corners"></span><span class="qr-corners-b"></span>
+            <img id="userDisplayQR" src="" alt="Payment QR">
+            <span class="qr-scan"></span>
+          </div></div>
+        </div>
+
+        <div class="apps"><span><b>✓</b>GPay</span><span><b>✓</b>PhonePe</span><span><b>✓</b>Paytm</span><span><b>✓</b>BHIM</span></div>
+
+        <form id="userPaymentForm" class="stack">
+          <div class="field-group">
+            <div class="field-label">Email address</div>
+            <input type="email" id="userEmail" class="input" placeholder="you@domain.com" autocomplete="email" required>
+          </div>
+          <div class="field-group">
+            <div class="field-label">UTR / UPI reference <span id="utrCount">0/12</span></div>
+            <input type="text" id="userUTR" class="input mono" placeholder="•••• •••• ••••" maxlength="12" inputmode="numeric" pattern="\d{12}" autocomplete="off" required>
+          </div>
+          <button type="submit" id="userSubmitBtn" class="btn btn-primary" onclick="handleClick()">Verify payment</button>
+        </form>
+        <p class="foot">Protected by UPI • UTR is found in your payment app after payment</p>
+      </div>
+
+      <div id="userWaitingSection" class="hidden">
+        <div class="radar-wrap">
+          <div class="radar-glow"></div>
+          <div class="radar-ring"></div><div class="radar-ring"></div><div class="radar-ring"></div>
+          <div class="radar-sweep"></div>
+          <div class="radar-core">
+            <svg viewBox="0 0 24 24"><path d="M12 3l7 3v5c0 4.2-2.8 7.8-7 10-4.2-2.2-7-5.8-7-10V6l7-3z"/><path d="M9 12l2 2 4-4"/></svg>
+          </div>
+        </div>
+        <h2 class="display" style="font-size:32px; text-align:center; margin-top:0">Verifying payment</h2>
+        <p class="sub" style="text-align:center; margin-bottom:6px">This usually takes 30–90 seconds. Don’t close this tab.</p>
+
+        <ul class="steps" id="vSteps">
+          <li class="done"><span class="dot"></span>Payment details received</li>
+          <li class="active"><span class="dot"></span><span id="vMsg">Contacting UPI network…</span></li>
+          <li><span class="dot"></span>Confirming & unlocking access</li>
+        </ul>
+        <div class="progress"><span></span></div>
+        <div class="meta-row"><span>Elapsed <b id="vTime">00:00</b></span><span>Keep page open</span></div>
+
+        <div class="receipt">
+          <p><b>Email</b><span id="logEmail"></span></p>
+          <p><b>Amount</b><span id="logAmt"></span></p>
+          <p><b>UTR</b><span id="logUTR"></span></p>
+        </div>
+        <p class="foot">Automated bank verification in progress</p>
+      </div>
+
+      <div id="userSuccessSection" class="hidden">
+        <div class="success-wrap">
+          <div class="check-shell">
+            <div class="check-glow"></div>
+            <div class="check-circle"></div>
+            <svg class="checkmark check-pop" viewBox="0 0 52 52">
+              <circle class="checkmark__circle" cx="26" cy="26" r="25"/>
+              <path class="checkmark__check" d="M14.2 26.8l7.2 7.2 16.4-16.8"/>
+            </svg>
+          </div>
+          <h2 class="display" style="text-align:center; font-size:36px; background:linear-gradient(180deg,#e8ff8a,#7cff9b); -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent">Payment verified</h2>
+          <p class="sub" style="text-align:center">Your transaction is confirmed. Access is now unlocked.</p>
+          <a id="targetLinkBtn" href="#" target="_blank" rel="noopener" class="btn btn-primary" style="margin-top:18px; text-align:center; text-decoration:none; display:block; background:#f5f2eb; color:#0a0a0b; box-shadow:0 16px 40px -10px rgba(255,255,255,.4)" onclick="handleClick()">Access your content →</a>
+          <p class="foot">A receipt has been logged • You can safely close after accessing</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ==================== PREMIUM AUDIO + HAPTICS ENGINE (keeps same API names) ==================== */
+let audioCtx = null;
+function getCtx(){
+  if(!audioCtx){
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  }
+  if(audioCtx.state==='suspended') audioCtx.resume();
+  return audioCtx;
+}
+function hapticLight(){ if(navigator.vibrate) navigator.vibrate(12); }
+function hapticMed(){ if(navigator.vibrate) navigator.vibrate([22]); }
+function hapticSuccess(){ if(navigator.vibrate) navigator.vibrate([30,50,30,80,120]); }
+function hapticError(){ if(navigator.vibrate) navigator.vibrate([40,30,60]); }
+
+/* legacy name wrappers kept for SEM compatibility */
+function playClick(){ handleClick(); }
+function playSuccessChime(){ handleSuccessSound(); }
+
+function handleClick(){
+  try{
+    const ctx=getCtx(); hapticLight();
+    const now=ctx.currentTime;
+    const o1=ctx.createOscillator(), g1=ctx.createGain();
+    const o2=ctx.createOscillator(), g2=ctx.createGain();
+    o1.type='sine'; o1.frequency.setValueAtTime(740, now); o1.frequency.exponentialRampToValueAtTime(220, now+0.08);
+    g1.gain.setValueAtTime(0.0001, now); g1.gain.exponentialRampToValueAtTime(0.22, now+0.005); g1.gain.exponentialRampToValueAtTime(0.0001, now+0.09);
+    o2.type='triangle'; o2.frequency.setValueAtTime(120, now); o2.frequency.setValueAtTime(80, now+0.06);
+    g2.gain.setValueAtTime(0.08, now); g2.gain.exponentialRampToValueAtTime(0.0001, now+0.12);
+    o1.connect(g1); g1.connect(ctx.destination);
+    o2.connect(g2); g2.connect(ctx.destination);
+    o1.start(now); o1.stop(now+0.1); o2.start(now); o2.stop(now+0.13);
+  }catch(e){}
+}
+function handleSuccessSound(){
+  try{
+    const ctx=getCtx(); hapticSuccess();
+    const master=ctx.createGain(); master.gain.value=0.22; master.connect(ctx.destination);
+    // soft reverb via delay
+    const delay=ctx.createDelay(1); delay.delayTime.value=0.12;
+    const fb=ctx.createGain(); fb.gain.value=0.18;
+    delay.connect(fb); fb.connect(delay); delay.connect(master);
+
+    const notes=[{f:523.25, t:0, d:0.28},{f:659.25, t:0.12, d:0.28},{f:783.99, t:0.24, d:0.36},{f:1046.5, t:0.38, d:0.9}];
+    const now=ctx.currentTime+0.02;
+    notes.forEach(n=>{
+      const o=ctx.createOscillator(), g=ctx.createGain();
+      const o2=ctx.createOscillator();
+      o.type='sine'; o.frequency.value=n.f; o2.type='triangle'; o2.frequency.value=n.f*2; o2.detune.value=4;
+      g.gain.setValueAtTime(0, now+n.t);
+      g.gain.linearRampToValueAtTime(0.9, now+n.t+0.02);
+      g.gain.exponentialRampToValueAtTime(0.001, now+n.t+n.d);
+      o.connect(g); o2.connect(g); g.connect(master); g.connect(delay);
+      o.start(now+n.t); o2.start(now+n.t); o.stop(now+n.t+n.d+0.1); o2.stop(now+n.t+n.d+0.1);
+    });
+    // shimmer
+    const sh=ctx.createOscillator(), sg=ctx.createGain();
+    sh.type='sine'; sh.frequency.value=2093; sg.gain.setValueAtTime(0, now+0.5); sg.gain.linearRampToValueAtTime(0.05, now+0.55); sg.gain.linearRampToValueAtTime(0, now+1.2);
+    sh.connect(sg); sg.connect(master); sh.start(now+0.5); sh.stop(now+1.25);
+  }catch(e){}
+}
+function handleErrorSound(){
+  try{
+    const ctx=getCtx(); hapticError();
+    const o=ctx.createOscillator(), g=ctx.createGain();
+    o.type='sawtooth'; o.frequency.setValueAtTime(220, ctx.currentTime); o.frequency.linearRampToValueAtTime(140, ctx.currentTime+0.25);
+    g.gain.setValueAtTime(0.18, ctx.currentTime); g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime+0.3);
+    o.connect(g); g.connect(ctx.destination); o.start(); o.stop(ctx.currentTime+0.32);
+  }catch(e){}
+}
+
+/* ==================== PAGE TRANSITION SYSTEM ==================== */
+function animateEnter(el){
+  if(!el) return;
+  el.classList.remove('hidden');
+  el.style.willChange='transform, opacity, filter';
+  el.animate([
+    {opacity:0, transform:'translateY(18px) scale(.97)', filter:'blur(14px)'},
+    {opacity:1, transform:'translateY(0) scale(1)', filter:'blur(0)'}
+  ], {duration:620, easing:'cubic-bezier(.22,1,.36,1)', fill:'both'});
+  const kids=[...el.querySelectorAll(':scope > .stagger, :scope > .stack, :scope > .amount-card, :scope > .qr-stage, :scope > .apps, :scope > form')];
+  kids.forEach((k,i)=>{
+    k.animate([{opacity:0, transform:'translateY(10px)'},{opacity:1, transform:'translateY(0)'}],
+    {duration:500, delay:80+i*60, easing:'cubic-bezier(.22,1,.36,1)', fill:'both'});
+  });
+  setTimeout(()=>{ el.style.willChange='auto'; }, 700);
+}
+function animateSwap(fromEl, toEl){
+  if(fromEl && !fromEl.classList.contains('hidden')){
+    fromEl.animate([
+      {opacity:1, transform:'translateY(0) scale(1)', filter:'blur(0)'},
+      {opacity:0, transform:'translateY(-12px) scale(.98)', filter:'blur(10px)'}
+    ], {duration:320, easing:'cubic-bezier(.4,0,.2,1)', fill:'forwards'}).onfinish=()=>{
+      fromEl.classList.add('hidden');
+      if(toEl) animateEnter(toEl);
+    };
+  } else if(toEl){
+    animateEnter(toEl);
+  }
+}
+
+/* ==================== CORE LOGIC (SEM - UNTOUCHED BEHAVIOR) ==================== */
+const FIREBASE_BASE_URL = "https://pementveryfy-default-rtdb.firebaseio.com";
+const $ = id => document.getElementById(id);
+const linkId = new URLSearchParams(window.location.search).get('id');
+
+if (linkId) {
+  $('userView').classList.remove('hidden');
+  loadPaymentDetails(linkId);
+} else {
+  animateEnter($('adminView'));
+  loadPreviousLinks();
+}
+
+/* Admin */
+let uploadedQrBase64 = "";
+$('adminQrFile').addEventListener('change', function (e) {
+  const file = e.target.files[0];
+  if (file) {
+    if (file.size > 800 * 1024) { alert("Please upload an image smaller than 800 KB."); this.value = ""; handleErrorSound(); return; }
+    const reader = new FileReader();
+    reader.onload = ev => {
+      uploadedQrBase64 = ev.target.result;
+      $('adminQrPreview').src = uploadedQrBase64;
+      $('adminPreviewBox').style.display = 'block';
+      $('adminPreviewBox').animate([{opacity:0, transform:'scale(.96)'},{opacity:1, transform:'scale(1)'}], {duration:400, easing:'cubic-bezier(.22,1,.36,1)'});
+      handleClick();
+    };
+    reader.readAsDataURL(file);
+  }
+});
+
+async function generatePaymentLink() {
+  const amount = $('adminAmount').value.trim();
+  const targetUrl = $('adminTargetUrl').value.trim();
+  const genBtn = $('genBtn');
+  if (!amount || amount <= 0) { alert("Enter a valid amount."); handleErrorSound(); return; }
+  if (!targetUrl) { alert("Enter a destination URL."); handleErrorSound(); return; }
+  if (!uploadedQrBase64) { alert("Upload a QR Code."); handleErrorSound(); return; }
+  genBtn.disabled = true; genBtn.innerText = "Generating…";
+  const newLinkId = "pay_" + Math.random().toString(36).substr(2, 9);
+  try {
+    const res = await fetch(`${FIREBASE_BASE_URL}/active_qr_links/${newLinkId}.json`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ amount, targetUrl, qrImage: uploadedQrBase64, createdAt: Date.now() })
+    });
+    if (res.ok) {
+      $('finalGeneratedLink').innerText = `${window.location.origin}${window.location.pathname}?id=${newLinkId}`;
+      $('adminResultBox').classList.remove('hidden');
+      animateEnter($('adminResultBox'));
+      handleSuccessSound();
+      loadPreviousLinks();
+    }
+  } catch (err) {
+    alert("Network Error."); handleErrorSound();
+  } finally {
+    genBtn.disabled = false; genBtn.innerText = "Generate payment link";
+  }
+}
+function copyPaymentLink() {
+  navigator.clipboard.writeText($('finalGeneratedLink').innerText);
+  handleClick(); hapticMed();
+  // tiny toast
+  const t=document.createElement('div');
+  t.textContent='Link copied ✓';
+  t.style.cssText='position:fixed; bottom:24px; left:50%; transform:translateX(-50%); padding:10px 16px; border-radius:999px; background:#f5f2eb; color:#0a0a0b; font:600 12px var(--sans); box-shadow:0 12px 30px rgba(0,0,0,.4); z-index:99';
+  document.body.appendChild(t);
+  t.animate([{opacity:0, transform:'translate(-50%,10px)'},{opacity:1, transform:'translate(-50%,0)'}], {duration:300, easing:'cubic-bezier(.22,1,.36,1)'}).onfinish=()=>{
+    setTimeout(()=>{ t.animate([{opacity:1},{opacity:0}],{duration:250}).onfinish=()=>t.remove(); }, 1200);
+  };
+}
+async function loadPreviousLinks() {
+  const container = $('previousLinksList');
+  container.innerHTML = "<p style='font-size:12px;color:var(--muted);padding:12px;font-family:var(--mono)'>Loading links…</p>";
+  try {
+    const res = await fetch(`${FIREBASE_BASE_URL}/active_qr_links.json`);
+    const data = await res.json();
+    if (!data || Object.keys(data).length === 0) {
+      container.innerHTML = "<p style='font-size:12px;color:var(--faint);padding:12px;font-family:var(--mono)'>No active links yet.</p>";
+      return;
+    }
+    container.innerHTML = "";
+    Object.keys(data).reverse().forEach((k, n) => {
+      const item = data[k];
+      const fullLink = `${window.location.origin}${window.location.pathname}?id=${k}`;
+      const itemEl = document.createElement('div');
+      itemEl.className = 'link-row';
+      itemEl.style.animationDelay = (n * 45) + 'ms';
+      itemEl.innerHTML = `
+        <img src="${item.qrImage}" alt="QR">
+        <div class="link-meta">
+          <div class="amt">₹${item.amount}</div>
+          <div class="url">↗ ${item.targetUrl || 'No target'}</div>
+        </div>
+        <button class="mini-btn mini-copy" onclick="handleClick(); navigator.clipboard.writeText('${fullLink}');">Copy</button>
+        <button class="mini-btn mini-del" onclick="handleClick(); deleteLink('${k}')">Del</button>`;
+      container.appendChild(itemEl);
+    });
+  } catch (e) { container.innerHTML = "<p style='color:var(--danger);font-size:12px'>Failed to load list.</p>"; }
+}
+async function deleteLink(id) {
+  if (!confirm("Delete this link permanently?")) return;
+  handleClick();
+  await fetch(`${FIREBASE_BASE_URL}/active_qr_links/${id}.json`, { method: "DELETE" });
+  loadPreviousLinks();
+}
+
+/* ================= USER LOGIC ================= */
+let currentAmount = "0", targetLinkUrl = "", activePaymentKey = "", checkInterval = null, uiTimer = null;
+
+async function loadPaymentDetails(id) {
+  try {
+    const res = await fetch(`${FIREBASE_BASE_URL}/active_qr_links/${id}.json`);
+    const data = await res.json();
+    if (data && data.qrImage) {
+      currentAmount = data.amount;
+      targetLinkUrl = data.targetUrl || "#";
+      $('userDisplayAmount').innerText = currentAmount;
+      $('userDisplayQR').src = data.qrImage;
+      $('targetLinkBtn').href = targetLinkUrl;
+      animateSwap($('loadingScreen'), $('userPaymentFormSection'));
+    } else {
+      $('loadingScreen').innerHTML = "<p style='color:var(--danger);font-weight:600;font-size:14px;text-align:center;padding:20px'>This payment link has expired or is invalid.</p>";
+      handleErrorSound();
+    }
+  } catch (e) {
+    $('loadingScreen').innerHTML = "<p style='color:var(--danger)'>Error loading data.</p>";
+  }
+}
+
+const utrEl = $('userUTR');
+utrEl.addEventListener('input', () => {
+  utrEl.value = utrEl.value.replace(/\D/g, '').slice(0, 12);
+  $('utrCount').innerText = utrEl.value.length + '/12';
+  if(utrEl.value.length===12){ utrEl.style.borderColor='rgba(232,255,106,.6)'; hapticLight(); }
+  else{ utrEl.style.borderColor=''; }
+});
+
+$('userPaymentForm').addEventListener('submit', async function (e) {
+  e.preventDefault();
+  const email = $('userEmail').value.trim();
+  const utr = $('userUTR').value.trim();
+  const submitBtn = $('userSubmitBtn');
+  if (!/^\d{12}$/.test(utr)) { alert("Please enter a valid 12-digit UTR number."); handleErrorSound(); hapticError(); return; }
+  submitBtn.disabled = true;
+  submitBtn.innerText = "Processing securely…";
+  try {
+    const res = await fetch(`${FIREBASE_BASE_URL}/pending_payments.json`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, utr, amount: currentAmount, status: "PENDING", timestamp: Date.now() })
+    });
+    const data = await res.json();
+    if (res.ok && data.name) {
+      activePaymentKey = data.name;
+      $('logEmail').innerText = email;
+      $('logUTR').innerText = utr;
+      animateSwap($('userPaymentFormSection'), $('userWaitingSection'));
+      startPaymentPolling(activePaymentKey);
+      hapticMed();
+    }
+  } catch (err) {
+    alert("Network Error!"); handleErrorSound();
+    submitBtn.disabled = false;
+    submitBtn.innerText = "Verify payment";
+  }
+});
+
+function startUiTimer() {
+  $('logAmt').innerText = '₹' + currentAmount;
+  const t0 = Date.now(), msgs = ['Contacting UPI network…', 'Matching UTR with bank ledger…', 'Validating amount & receiver…', 'Final confirmation…'];
+  let i = 0;
+  uiTimer = setInterval(() => {
+    const s = Math.floor((Date.now() - t0) / 1000);
+    $('vTime').innerText = String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0');
+    if (s && s % 4 === 0) {
+      i = Math.min(i + 1, msgs.length - 1);
+      const el=$('vMsg');
+      el.animate([{opacity:0, transform:'translateY(6px)'},{opacity:1, transform:'translateY(0)'}],{duration:280, easing:'cubic-bezier(.22,1,.36,1)'});
+      setTimeout(()=>{ el.innerText = msgs[i]; }, 140);
+      if(navigator.vibrate) navigator.vibrate(10);
+    }
+  }, 1000);
+}
+function burst() {
+  const colors = ['#e8ff6a','#ffffff','#9eff8a','#8b8eff','#f5f2eb'];
+  for (let i = 0; i < 42; i++) {
+    const el = document.createElement('i');
+    el.className = 'confetti';
+    const a = Math.random() * Math.PI * 2;
+    const d = 80 + Math.random() * 220;
+    el.style.background = colors[i % 5];
+    el.style.setProperty('--x', (Math.cos(a) * d) + 'px');
+    el.style.setProperty('--y', (Math.sin(a) * d + 90) + 'px');
+    el.style.setProperty('--r', (Math.random() * 720 - 360) + 'deg');
+    el.style.left = '50%'; el.style.top = '38%';
+    el.style.width = (6 + Math.random()*6) + 'px';
+    el.style.height = (8 + Math.random()*8) + 'px';
+    el.style.transform='translate(-50%,-50%)';
+    if(Math.random()>0.5) el.style.borderRadius='999px';
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), 1900);
+  }
+}
+
+function startPaymentPolling(key) {
+  startUiTimer();
+  checkInterval = setInterval(async () => {
+    try {
+      const res = await fetch(`${FIREBASE_BASE_URL}/pending_payments/${key}.json`);
+      const data = await res.json();
+      if (data && data.status === "SUCCESS") {
+        clearInterval(checkInterval);
+        clearInterval(uiTimer);
+        document.querySelectorAll('#vSteps li').forEach((li, idx)=>{
+          setTimeout(()=>{ li.className='done'; hapticLight(); }, idx*120);
+        });
+        setTimeout(() => {
+          handleSuccessSound(); burst();
+          animateSwap($('userWaitingSection'), $('userSuccessSection'));
+        }, 700);
+      }
+    } catch (e) { console.error("Polling error", e); }
+  }, 3000);
+}
+
+/* subtle parallax on mouse for premium feel */
+let mx=0,my=0;
+window.addEventListener('mousemove', e=>{
+  const x=(e.clientX/window.innerWidth-0.5)*2;
+  const y=(e.clientY/window.innerHeight-0.5)*2;
+  mx+=(x-mx)*0.05; my+=(y-my)*0.05;
+  document.querySelectorAll('.orb').forEach((orb,i)=>{
+    orb.style.transform=`translate(${mx*(8+i*4)}px, ${my*(8+i*4)}px)`;
+  });
+  const shell=document.getElementById('mainContainer');
+  if(shell) shell.style.transform=`perspective(1000px) rotateX(${my*-1.2}deg) rotateY(${mx*1.8}deg)`;
+});
+</script>
+</body>
+</html>
